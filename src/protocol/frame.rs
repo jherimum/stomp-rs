@@ -170,7 +170,7 @@ mod tests {
 
     #[test]
     fn test_connect() {
-        let accept_version = "1.2";
+        let accept_version = "1.1";
         let client_heartbeat = 10;
         let server_heartbeat = 25;
         let host = "test-host";
