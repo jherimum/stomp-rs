@@ -1,6 +1,6 @@
 use crate::client::handler::receipt_awaiter::ReceiptHandler;
-use crate::client::handler::subscribers::{SubscriberHandler};
-use crate::client::interceptor::{ConnectionHook};
+use crate::client::handler::subscribers::SubscriberHandler;
+use crate::client::interceptor::ConnectionHook;
 use crate::client::{ClientBuilder, ClientError, SendReceipt};
 use crate::connection::{Connection, ConnectionError};
 use crate::protocol::frame::{Ack, Connect, Nack, Send, Subscribe};
@@ -35,10 +35,7 @@ impl InternalClient {
             connection,
             subscriber: subscriber.clone(),
             receipt: receipt_handler.clone(),
-            hooks: Arc::new(vec![
-                Box::new(receipt_handler),
-                Box::new(subscriber),
-            ]),
+            hooks: Arc::new(vec![Box::new(receipt_handler), Box::new(subscriber)]),
         };
 
         let server_timeout: u128 = builder.heartbeat.unwrap_or((0, 0)).1.into();
@@ -49,7 +46,7 @@ impl InternalClient {
             .spawn_server_frame_listener(connected_sender, receiver, server_timeout)
             .await;
 
-        let mut connect_frame = Connect::new("1.2".to_owned(), builder.host);
+        let mut connect_frame = Connect::new("1.1".to_owned(), builder.host);
 
         if let Some(heartbeat) = builder.heartbeat {
             connect_frame = connect_frame.heartbeat(heartbeat.0, heartbeat.1);
@@ -117,7 +114,6 @@ impl InternalClient {
                                         .unwrap();
                                 }
 
-
                                 for hook in hooks.iter() {
                                     hook.after_receive(&frame).await;
                                 }
@@ -134,6 +130,13 @@ impl InternalClient {
                 }
             }
         });
+    }
+
+    pub(crate) async fn ping(&self) -> Result<(), Box<dyn Error>> {
+        match self.connection.heartbeat().await {
+            Ok(_) => Ok(()),
+            Err(e) => Err(Box::new(e)),
+        }
     }
 
     pub(crate) async fn subscribe(
@@ -161,12 +164,10 @@ impl InternalClient {
         self.emit(send.receipt(receipt_id.to_string()).into())
             .await?;
 
-        Ok(
-            SendReceipt {
-                receipt_id: receipt_id.to_string(),
-                notify: self.receipt.pending_receipt(receipt_id.to_string())
-            }
-        )
+        Ok(SendReceipt {
+            receipt_id: receipt_id.to_string(),
+            notify: self.receipt.pending_receipt(receipt_id.to_string()),
+        })
     }
 
     pub(crate) async fn emit(&self, frame: Frame<ClientCommand>) -> Result<(), Box<dyn Error>> {
