@@ -27,10 +27,6 @@ impl Transaction {
         }
     }
 
-    pub async fn ping(&self) -> Result<(), Box<dyn Error>> {
-        self.internal_client.ping().await
-    }
-
     pub async fn send(&self, send: Send) -> Result<SendReceipt, Box<dyn Error>> {
         self.internal_client
             .send(send.header("transaction", self.transaction_id.clone()))
@@ -122,6 +118,10 @@ impl Client {
         Ok(Self {
             internal_client: Arc::new(internal_client),
         })
+    }
+
+    pub async fn ping(&self) -> Result<(), Box<dyn Error>> {
+        self.internal_client.ping().await
     }
 
     pub async fn subscribe(
