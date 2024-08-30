@@ -27,6 +27,10 @@ impl Transaction {
         }
     }
 
+    pub async fn ping(&self) -> Result<(), Box<dyn Error>> {
+        self.internal_client.ping().await
+    }
+
     pub async fn send(&self, send: Send) -> Result<SendReceipt, Box<dyn Error>> {
         self.internal_client
             .send(send.header("transaction", self.transaction_id.clone()))
@@ -70,6 +74,7 @@ pub struct Client {
     internal_client: Arc<InternalClient>,
 }
 
+#[derive(Clone)]
 pub struct ClientBuilder {
     host: String,
     heartbeat: Option<(u32, u32)>,
